@@ -1,4 +1,4 @@
-# Girjasoft Invoices
+# Invoices
 
 A modern, full-stack invoicing application built with Next.js, Express.js, and MongoDB.
 
