@@ -36,12 +36,12 @@ export default function SettingsPage() {
 
   const { data: invoiceGroupsData } = useQuery({
     queryKey: ['invoiceGroups'],
-    queryFn: invoiceGroupsApi.getAll,
+    queryFn: () => invoiceGroupsApi.getAll(),
   })
 
   const { data: paymentMethodsData } = useQuery({
     queryKey: ['paymentMethods'],
-    queryFn: paymentMethodsApi.getAll,
+    queryFn: () => paymentMethodsApi.getAll(),
   })
 
   const settings = settingsData?.data?.data || {}
