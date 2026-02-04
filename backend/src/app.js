@@ -5,9 +5,15 @@ import morgan from 'morgan';
 import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
 import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { existsSync } from 'fs';
 
 import connectDB from './config/database.js';
 import errorHandler from './middleware/errorHandler.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Route imports
 import authRoutes from './routes/auth.routes.js';
@@ -34,9 +40,11 @@ const app = express();
 connectDB();
 
 // Security Middleware
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false, // Allow inline scripts/styles for Next.js
+}));
 app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+  origin: process.env.FRONTEND_URL || true, // Allow same origin in production
   credentials: true
 }));
 
@@ -98,11 +106,52 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Serve static files from Next.js build (in production)
+if (process.env.NODE_ENV === 'production') {
+  // Try multiple possible paths for frontend build
+  const possiblePaths = [
+    path.join(__dirname, '../frontend/out'),  // Docker: backend/src -> backend/frontend/out
+    path.join(__dirname, '../../frontend/out'), // Local: backend/src -> root/frontend/out
+  ];
+  
+  let frontendPath = null;
+  for (const possiblePath of possiblePaths) {
+    if (existsSync(possiblePath)) {
+      frontendPath = possiblePath;
+      break;
+    }
+  }
+  
+  if (frontendPath) {
+    console.log(`Serving frontend from: ${frontendPath}`);
+    app.use(express.static(frontendPath));
+    
+    // Serve Next.js app for all non-API routes
+    app.get('*', (req, res, next) => {
+      // Skip API routes
+      if (req.path.startsWith('/api')) {
+        return next();
+      }
+      
+      // Try to serve the file, fallback to index.html for client-side routing
+      const filePath = path.join(frontendPath, req.path === '/' ? 'index.html' : `${req.path}.html`);
+      res.sendFile(filePath, (err) => {
+        if (err) {
+          // If file doesn't exist, serve index.html (for client-side routing)
+          res.sendFile(path.join(frontendPath, 'index.html'));
+        }
+      });
+    });
+  } else {
+    console.warn('Warning: Frontend build not found. API will work but frontend will not be served.');
+  }
+}
+
 // Error handling
 app.use(errorHandler);
 
-// 404 handler
-app.use((req, res) => {
+// 404 handler for API routes only
+app.use('/api/*', (req, res) => {
   res.status(404).json({ message: 'Route not found' });
 });
 

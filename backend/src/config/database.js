@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 
 const connectDB = async () => {
   try {
-    const conn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/girjasoft_invoices', {
+    const conn = await mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/invoiceplane', {
       // Connection pool settings for scalability
       maxPoolSize: 50,           // Maximum connections in the pool
       minPoolSize: 5,            // Minimum connections to maintain
